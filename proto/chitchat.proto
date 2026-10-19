@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package chitchat;
+
+option go_package = "chitchat/proto";
+
+service ChitChat {
+    rpc OpenChatStream (stream ChatMessage) returns (stream ChatMessage);
+}
+
+message ChatMessage {
+    string Sender = 1;
+    string Body = 2;
+    uint32 timestamp = 3;
+    MessageType type = 4;
+}
+
+enum MessageType {
+    NormalChatMessage = 0;
+    Disconnect = 1;
+    Connect = 2;
+    NameTakenError = 3;
+};
