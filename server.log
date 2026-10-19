@@ -1,0 +1,11 @@
+2026/10/19 13:39:07 SERVER: Started and listening on :50051
+2026/10/19 13:39:14 SERVER: Connected to frederik
+2026/10/19 13:39:14 SERVER: Broadcasting message: 'Participant frederik joined Chit Chat at logical time 2' from SERVER at 2.
+2026/10/19 13:39:16 SERVER: Broadcasting message: 'hej' from frederik at 3.
+2026/10/19 13:39:17 SERVER: Broadcasting message: 'med' from frederik at 4.
+2026/10/19 13:39:17 SERVER: Broadcasting message: 'dig' from frederik at 5.
+2026/10/19 13:39:18 SERVER: Broadcasting message: 'jeg ' from frederik at 6.
+2026/10/19 13:39:19 SERVER: Broadcasting message: 'hedder' from frederik at 7.
+2026/10/19 13:39:21 SERVER: Broadcasting message: 'frederik' from frederik at 8.
+2026/10/19 13:39:23 SERVER: disconnected frederik
+2026/10/19 13:39:23 SERVER: Broadcasting message: 'Participant frederik left Chit Chat at logical time 9' from SERVER at 9.

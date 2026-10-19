@@ -113,7 +113,10 @@ func (this *Client) sendMessageLoop() {
 // protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative proto/chitchat.proto
 
 func (this *Client) sendMessage(msg_body string) {
-
+	if len(msg_body) > 128 {
+		log.Println("tried to send to long message")
+		return
+	}
 	this.clock.Incr()
 
 	this.stream.Send(&pb.ChatMessage{

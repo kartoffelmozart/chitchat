@@ -3,8 +3,10 @@ package main
 import (
 	pb "chitchat/proto"
 	"chitchat/util"
+	"io"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"sync"
 
@@ -48,36 +50,39 @@ func (this *chitChatServer) OpenChatStream(stream pb.ChitChat_OpenChatStreamServ
 }
 
 func (this *chitChatServer) receiveLoop(stream pb.ChitChat_OpenChatStreamServer, error_ch chan error) {
-
-	msg, err := stream.Recv()
-	if err != nil {
-		log.Fatalf("failed to receive: %v", err)
-		error_ch <- err
-		return
-	}
-
-	this.clock.Update(msg.GetTimestamp())
-
-	if msg.Type == pb.MessageType_NormalChatMessage {
-
-		this.broadcast_chan <- &pb.ChatMessage{
-			Sender:    msg.GetSender(),
-			Body:      msg.GetBody(),
-			Timestamp: this.clock.GetTimestamp(),
+	for {
+		msg, err := stream.Recv()
+		if err != nil {
+			log.Fatalf("failed to receive: %v", err)
+			error_ch <- err
+			return
 		}
-	} else if msg.Type == pb.MessageType_Connect {
 
-	} else if msg.Type == pb.MessageType_Disconnect {
+		// log.Printf()
 
-		this.disconnect(msg.GetSender())
+		this.clock.Update(msg.GetTimestamp())
 
-		this.broadcast_chan <- &pb.ChatMessage{
-			Sender:    "SERVER",
-			Body:      "Participant " + msg.GetSender() + " joined Chit Chat at logical time " + strconv.Itoa(int(this.clock.GetTimestamp())),
-			Timestamp: this.clock.GetTimestamp(),
-			Type:      pb.MessageType_NormalChatMessage,
+		if msg.Type == pb.MessageType_NormalChatMessage {
+
+			this.broadcast_chan <- &pb.ChatMessage{
+				Sender:    msg.GetSender(),
+				Body:      msg.GetBody(),
+				Timestamp: this.clock.GetTimestamp(),
+			}
+		} else if msg.Type == pb.MessageType_Connect {
+
+		} else if msg.Type == pb.MessageType_Disconnect {
+
+			this.disconnect(msg.GetSender())
+
+			this.broadcast_chan <- &pb.ChatMessage{
+				Sender:    "SERVER",
+				Body:      "Participant " + msg.GetSender() + " left Chit Chat at logical time " + strconv.Itoa(int(this.clock.GetTimestamp())),
+				Timestamp: this.clock.GetTimestamp(),
+				Type:      pb.MessageType_NormalChatMessage,
+			}
+			return
 		}
-		return
 	}
 
 }
@@ -91,7 +96,7 @@ func (this *chitChatServer) sendLoop(name string, stream pb.ChitChat_OpenChatStr
 
 			err := stream.Send(msg)
 			if err != nil {
-				log.Fatalf("server failed to send: %v", err)
+				log.Printf("server failed to send: %v", err)
 				error_ch <- err
 				return
 			}
@@ -121,7 +126,7 @@ func (this *chitChatServer) connectUser(stream pb.ChitChat_OpenChatStreamServer)
 
 		connect_msg, connect_msg_err = stream.Recv()
 		if connect_msg_err != nil || connect_msg.Type != pb.MessageType_Connect {
-			log.Fatal("SERVER: Failed to receive connect message")
+			log.Printf("SERVER: Failed to receive connect message")
 		}
 
 		name = connect_msg.Sender
@@ -198,6 +203,17 @@ func (this *chitChatServer) disconnect(name string) {
 }
 
 func main() {
+	logFile, err := os.OpenFile("server.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		log.Fatalf("failed to open log file: %v", err)
+	}
+	defer logFile.Close()
+
+	// File only:
+	// log.SetOutput(logFile)
+
+	// File and terminal:
+	log.SetOutput(io.MultiWriter(os.Stdout, logFile))
 	// Create a TCP listener on port 50051.
 	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {
