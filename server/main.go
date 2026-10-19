@@ -7,8 +7,11 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
+	"time"
 
 	"google.golang.org/grpc"
 )
@@ -202,6 +205,49 @@ func (this *chitChatServer) disconnect(name string) {
 	log.Println("SERVER: disconnected " + name)
 }
 
+func (this *chitChatServer) Shutdown(grpcServer *grpc.Server) {
+	this.clock.Incr()
+	ts := this.clock.GetTimestamp()
+
+	log.Println("SERVER: shutting down at logical time " + strconv.Itoa(int(ts)))
+
+	msg := &pb.ChatMessage{
+		Sender:    "SERVER",
+		Body:      "Server is shutting down at logical time " + strconv.Itoa(int(ts)),
+		Timestamp: ts,
+		Type:      pb.MessageType_NormalChatMessage,
+	}
+
+	// Snapshot the channels under the lock, then send outside it
+	// so we don't hold the mutex while blocking on channel sends.
+	this.mu.Lock()
+	msgChans := make([]chan *pb.ChatMessage, 0, len(this.client_chans))
+	doneChans := make([]chan bool, 0, len(this.done_chans))
+	for name, ch := range this.client_chans {
+		msgChans = append(msgChans, ch)
+		doneChans = append(doneChans, this.done_chans[name])
+	}
+	this.mu.Unlock()
+
+	for i := range msgChans {
+		// Deliver the shutdown message, then tell sendLoop to exit.
+		// Timeouts prevent hanging on a client whose sendLoop already died.
+		select {
+		case msgChans[i] <- msg:
+		case <-time.After(2 * time.Second):
+			log.Println("SERVER: timed out sending shutdown message to a client")
+		}
+		select {
+		case doneChans[i] <- true:
+		case <-time.After(2 * time.Second):
+			log.Println("SERVER: timed out signalling a client to disconnect")
+		}
+	}
+
+	grpcServer.GracefulStop()
+	log.Println("SERVER: shutdown complete")
+}
+
 func main() {
 	logFile, err := os.OpenFile("server.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
@@ -209,29 +255,34 @@ func main() {
 	}
 	defer logFile.Close()
 
-	// File only:
-	// log.SetOutput(logFile)
-
-	// File and terminal:
 	log.SetOutput(io.MultiWriter(os.Stdout, logFile))
-	// Create a TCP listener on port 50051.
+
 	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	// Create a new gRPC server.
 	grpcServer := grpc.NewServer()
-
 	chitChatServer := NewChitChatServer()
-
-	// Register our ChitChatServer implementation with the gRPC server.
 	pb.RegisterChitChatServer(grpcServer, chitChatServer)
+
+	// Set up the shutdown handler BEFORE calling Serve
+	shutdownDone := make(chan struct{})
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-stop
+		chitChatServer.Shutdown(grpcServer)
+		close(shutdownDone)
+	}()
 
 	log.Println("SERVER: Started and listening on :50051")
 
-	// Start accepting gRPC connections.
+	// Serve once. It returns when GracefulStop is called.
 	if err := grpcServer.Serve(listener); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
+
+	<-shutdownDone
 }

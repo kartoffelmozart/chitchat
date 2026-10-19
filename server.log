@@ -9,3 +9,13 @@
 2026/10/19 13:39:21 SERVER: Broadcasting message: 'frederik' from frederik at 8.
 2026/10/19 13:39:23 SERVER: disconnected frederik
 2026/10/19 13:39:23 SERVER: Broadcasting message: 'Participant frederik left Chit Chat at logical time 9' from SERVER at 9.
+2026/10/19 13:54:27 SERVER: Started and listening on :50051
+2026/10/19 13:54:35 SERVER: Connected to frederik
+2026/10/19 13:54:35 SERVER: Broadcasting message: 'Participant frederik joined Chit Chat at logical time 2' from SERVER at 2.
+2026/10/19 13:54:36 SERVER: Broadcasting message: 'hej' from frederik at 3.
+2026/10/19 13:56:41 SERVER: Started and listening on :50051
+2026/10/19 13:56:48 SERVER: Connected to frederik
+2026/10/19 13:56:48 SERVER: Broadcasting message: 'Participant frederik joined Chit Chat at logical time 2' from SERVER at 2.
+2026/10/19 13:56:49 SERVER: Broadcasting message: 'hej' from frederik at 3.
+2026/10/19 13:56:53 SERVER: shutting down at logical time 4
+2026/10/19 13:56:53 failed to receive: rpc error: code = Canceled desc = context canceled
